@@ -1,0 +1,42 @@
+import { createBrowserRouter } from 'react-router';
+import Home from './pages/Home';
+import ListingDetail from './pages/ListingDetail';
+import AddListing from './pages/AddListing';
+import Search from './pages/Search';
+import Profile from './pages/Profile';
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    Component: Home,
+  },
+  {
+    path: '/search',
+    Component: Search,
+  },
+  {
+    path: '/listing/:id',
+    Component: ListingDetail,
+  },
+  {
+    path: '/add',
+    Component: AddListing,
+  },
+  {
+    path: '/profile',
+    Component: Profile,
+  },
+  {
+    path: '*',
+    Component: () => (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1>404 - Seite nicht gefunden</h1>
+          <p className="text-muted-foreground mt-2">
+            Die gesuchte Seite existiert nicht.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+]);
