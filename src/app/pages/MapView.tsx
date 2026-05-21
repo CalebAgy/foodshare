@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Bell } from 'lucide-react';
+import { Bell, RotateCcw } from 'lucide-react';
 import { mockListings } from '../data/mockListings';
 import { BottomNav } from '../components/BottomNav';
 import { LocationPermissionBanner } from '../components/LocationPermissionBanner';
@@ -11,8 +11,8 @@ import { LocationFallback } from '../components/LocationFallback';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useUserBehavior } from '../hooks/useUserBehavior';
 import { scoreListings, type RecommendationTier } from '../utils/recommendationEngine';
+import { haversineDistance } from '../utils/haversineDistance';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 
 // Fix default marker icons broken by Vite's asset pipeline
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -90,6 +90,16 @@ function RecenterMap({ center }: { center: [number, number] }) {
   return null;
 }
 
+function formatTimeLeft(expiresAt: Date): string {
+  const diff = expiresAt.getTime() - Date.now();
+  if (diff <= 0) return 'Abgelaufen';
+  const h = Math.floor(diff / (1000 * 60 * 60));
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (h === 0) return `${m} Min`;
+  if (h < 24) return `${h}h ${m}m`;
+  return `${Math.floor(h / 24)}d`;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -97,20 +107,32 @@ function RecenterMap({ center }: { center: [number, number] }) {
 export default function MapView() {
   const navigate = useNavigate();
   const { latitude, longitude, permissionState, requestLocation } = useGeolocation();
-  const { behavior } = useUserBehavior();
+  const { behavior, clearBehavior } = useUserBehavior();
 
   useEffect(() => {
     requestLocation();
-    // Inject pulse animation for hot markers once
-    const style = document.createElement('style');
-    style.id = 'foodshare-marker-styles';
     if (!document.getElementById('foodshare-marker-styles')) {
+      const style = document.createElement('style');
+      style.id = 'foodshare-marker-styles';
       style.textContent = `
         @keyframes pulse-hot {
           0%,100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.6); }
           50%      { box-shadow: 0 0 0 10px rgba(249,115,22,0); }
         }
         .marker-hot { animation: pulse-hot 1.6s ease-in-out infinite; }
+        .foodshare-popup .leaflet-popup-content-wrapper {
+          padding: 0;
+          overflow: hidden;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .foodshare-popup .leaflet-popup-content {
+          margin: 0;
+          width: auto !important;
+        }
+        .foodshare-popup .leaflet-popup-tip-container {
+          margin-top: -1px;
+        }
       `;
       document.head.appendChild(style);
     }
@@ -121,7 +143,6 @@ export default function MapView() {
     latitude !== null && longitude !== null ? [latitude, longitude] : null;
   const mapCenter = userPos ?? HTW_CENTER;
 
-  // Recompute scores whenever behavior or location changes
   const scores = useMemo(
     () => scoreListings(mockListings, behavior.views, latitude, longitude),
     [behavior.views, latitude, longitude]
@@ -144,12 +165,24 @@ export default function MapView() {
                   : 'Angebote in deiner Nähe'}
               </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={requestLocation}>
-              <Bell className="size-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {behavior.views.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-muted-foreground gap-1"
+                  onClick={clearBehavior}
+                >
+                  <RotateCcw className="size-3.5" />
+                  Reset
+                </Button>
+              )}
+              <Button size="icon" variant="ghost" onClick={requestLocation}>
+                <Bell className="size-5" />
+              </Button>
+            </div>
           </div>
 
-          {/* Legend — only shown when recommendations are active */}
           {hasRecommendations && (
             <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">🔥 Sehr passend</span>
@@ -168,7 +201,7 @@ export default function MapView() {
         <LocationFallback permissionState={permissionState} onRetry={requestLocation} />
       </header>
 
-      {/* Map */}
+      {/* Map — flex-1 + min-h-0 fills remaining space between header and nav */}
       <div className="flex-1 min-h-0 max-w-md w-full mx-auto">
         <MapContainer
           center={mapCenter}
@@ -182,18 +215,24 @@ export default function MapView() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
 
-          {/* User location */}
           {userPos && (
             <Marker position={userPos} icon={userIcon}>
-              <Popup>Dein Standort</Popup>
+              <Popup className="foodshare-popup">
+                <div style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500 }}>
+                  📍 Dein Standort
+                </div>
+              </Popup>
             </Marker>
           )}
 
-          {/* Listing markers */}
           {mockListings.map((listing) => {
             const rec = scores.get(listing.id);
             const tier = rec?.tier ?? 'normal';
             const icon = buildMarkerIcon(tier);
+            const isUrgent = listing.expiresAt.getTime() - Date.now() < 3 * 60 * 60 * 1000;
+            const dist = userPos
+              ? haversineDistance(userPos[0], userPos[1], listing.latitude, listing.longitude)
+              : listing.distance;
 
             return (
               <Marker
@@ -201,55 +240,102 @@ export default function MapView() {
                 position={[listing.latitude, listing.longitude]}
                 icon={icon}
               >
-                <Popup minWidth={210}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 0' }}>
+                <Popup className="foodshare-popup" minWidth={272} maxWidth={272}>
+                  <div style={{ width: 272, fontFamily: 'system-ui, sans-serif' }}>
 
-                    {/* Recommendation badge */}
-                    {rec && tier !== 'normal' && (
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        background: tier === 'hot' ? '#fff7ed' : '#fefce8',
-                        border: `1px solid ${tier === 'hot' ? '#fed7aa' : '#fef08a'}`,
-                        borderRadius: 6,
-                        padding: '2px 8px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: tier === 'hot' ? '#c2410c' : '#a16207',
-                      }}>
-                        {tier === 'hot' ? '🔥' : '⭐'} Empfohlen · {rec.reason}
+                    {/* Image */}
+                    <div style={{ position: 'relative', height: 140, overflow: 'hidden' }}>
+                      <img
+                        src={listing.imageUrl}
+                        alt={listing.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                      {/* Type + price badges overlaid on image */}
+                      <div style={{ position: 'absolute', bottom: 8, left: 10, display: 'flex', gap: 6 }}>
+                        <span style={{
+                          background: listing.type === 'store' ? '#18181b' : '#f4f4f5',
+                          color: listing.type === 'store' ? '#fff' : '#3f3f46',
+                          fontSize: 10, fontWeight: 600, padding: '2px 8px',
+                          borderRadius: 20, letterSpacing: 0.3,
+                        }}>
+                          {listing.type === 'store' ? 'Laden' : 'Privat'}
+                        </span>
+                        {listing.price === 0 && (
+                          <span style={{
+                            background: '#16a34a', color: '#fff',
+                            fontSize: 10, fontWeight: 600, padding: '2px 8px',
+                            borderRadius: 20, letterSpacing: 0.3,
+                          }}>
+                            Kostenlos
+                          </span>
+                        )}
                       </div>
-                    )}
-
-                    {/* Title + type */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <p style={{ fontWeight: 600, fontSize: 13, margin: 0, lineHeight: 1.3 }}>{listing.title}</p>
-                      <Badge
-                        variant={listing.type === 'store' ? 'default' : 'secondary'}
-                        className="text-xs shrink-0"
-                      >
-                        {listing.type === 'store' ? 'Laden' : 'Privat'}
-                      </Badge>
                     </div>
 
-                    {/* Address */}
-                    <p style={{ fontSize: 11, color: '#888', margin: 0 }}>{listing.address}</p>
+                    {/* Body */}
+                    <div style={{ padding: '10px 12px 12px' }}>
 
-                    {/* Price */}
-                    {listing.price === 0 ? (
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', margin: 0 }}>Kostenlos</p>
-                    ) : (
-                      <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{listing.price.toFixed(2)} €</p>
-                    )}
+                      {/* Recommendation badge */}
+                      {rec && tier !== 'normal' && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 6,
+                          background: tier === 'hot' ? '#fff7ed' : '#fefce8',
+                          border: `1px solid ${tier === 'hot' ? '#fed7aa' : '#fef08a'}`,
+                          borderRadius: 6, padding: '2px 7px',
+                          fontSize: 10, fontWeight: 600,
+                          color: tier === 'hot' ? '#c2410c' : '#a16207',
+                        }}>
+                          {tier === 'hot' ? '🔥' : '⭐'} {rec.reason}
+                        </div>
+                      )}
 
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => navigate(`/listing/${listing.id}`)}
-                    >
-                      Angebot öffnen
-                    </Button>
+                      {/* Title */}
+                      <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 700, lineHeight: 1.3, color: '#18181b' }}>
+                        {listing.title}
+                      </p>
+                      <p style={{ margin: '0 0 8px', fontSize: 11, color: '#71717a' }}>
+                        {listing.address}
+                      </p>
+
+                      {/* Stats row */}
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                        <span style={{
+                          background: isUrgent ? '#fef2f2' : '#f4f4f5',
+                          color: isUrgent ? '#dc2626' : '#52525b',
+                          fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 20,
+                        }}>
+                          ⏱ {formatTimeLeft(listing.expiresAt)}
+                        </span>
+                        <span style={{
+                          background: '#f4f4f5', color: '#52525b',
+                          fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 20,
+                        }}>
+                          📍 {dist.toFixed(1)} km
+                        </span>
+                        {listing.price > 0 && (
+                          <span style={{
+                            background: '#f4f4f5', color: '#52525b',
+                            fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 20,
+                          }}>
+                            {listing.price.toFixed(2)} €
+                          </span>
+                        )}
+                      </div>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => navigate(`/listing/${listing.id}`)}
+                        style={{
+                          width: '100%', padding: '8px 0',
+                          background: '#16a34a', color: '#fff',
+                          border: 'none', borderRadius: 8,
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          letterSpacing: 0.2,
+                        }}
+                      >
+                        Angebot öffnen →
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -258,8 +344,9 @@ export default function MapView() {
         </MapContainer>
       </div>
 
+      {/* Inline nav — participates in flex layout so map never extends behind it */}
       <div className="shrink-0">
-        <BottomNav />
+        <BottomNav variant="inline" />
       </div>
     </div>
   );

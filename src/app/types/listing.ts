@@ -19,4 +19,8 @@ export interface Listing {
   category: string[];
   createdBy: string;
   createdAt: Date;
+  /** How the offerer prefers to be contacted */
+  contactMethod: 'chat' | 'call' | 'both';
+  /** Whether pickups are confirmed instantly or require offerer approval */
+  confirmationType: 'auto' | 'manual';
 }

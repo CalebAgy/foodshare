@@ -639,3 +639,49 @@ Tap "Erstellen" (+ tab)
 6. **Ratings** — prompted 1–3 days after pickup, displayed as stars on cards
 7. **CO₂ calculator** — simple lookup table: kg food × emission factor per category
 8. **Push notifications** — Web Push API for pickup reminders
+
+---
+
+## 15. Changelog — Session 3 (2026-05-21)
+
+### Bug fix: Map overlapping bottom navigation
+`BottomNav` uses `position: fixed` by default, which removes it from document flow. The map container therefore extended all the way to the bottom of the viewport and the nav bar rendered on top of it. Fix: added a `variant` prop to `BottomNav` (`'fixed'` default | `'inline'`). MapView now uses `variant="inline"`, which removes the fixed positioning and lets the nav participate in the flex column — the map is hard-bounded above the nav bar.
+
+### Richer map popup
+The old popup showed only title, address, price, and a CTA button. Replaced with a full card:
+- Food photo (140 px tall, flush to the top edge via injected CSS that strips Leaflet's default padding)
+- Type badge ("Laden" / "Privat") and "Kostenlos" badge overlaid on the image
+- Recommendation badge (🔥 / ⭐) when the ML engine is active
+- Title + address
+- Three stat chips: time remaining (turns red when < 3 h), distance (live GPS or fallback), price
+- "Angebot öffnen →" CTA button
+Popup width fixed at 272 px so the image fills consistently. Popup corners are rounded via the injected style override.
+
+### Order & contact flow redesign (`ListingDetail`)
+Replaced the static "Jetzt anrufen / Nachricht senden" button with a proper order state machine and contact-preference system.
+
+**New data model fields** (added to `Listing` type and all mock listings):
+- `contactMethod: 'chat' | 'call' | 'both'` — how the offerer wants to be reached
+- `confirmationType: 'auto' | 'manual'` — instant confirmation vs. offerer must approve
+
+**New "Kontakt & Abholung" section** in the detail page shows the offerer's preferences upfront (before the user commits to requesting).
+
+**Order state machine** (`idle → requesting → pending | confirmed`):
+- `idle`: "Abholung anfragen" primary button + confirmation type hint + contact method icons
+- `requesting`: spinner for 900 ms (simulates network call)
+- `pending` (manual confirmation listings): amber card "Warte auf Bestätigung" + context-aware contact button + cancel link
+- `confirmed` (auto-confirm or approved): green card with mock pickup code (e.g. `FD-0001`) + contact button
+
+**`ContactButton` helper component**: renders one or two contact buttons depending on `contactMethod` — chat-only listings get a message button, call-only get a phone button, "both" listings get both side by side.
+
+**Mock listing contact preferences:**
+| Listing | contactMethod | confirmationType |
+|---|---|---|
+| Bäckerei Schmidt | call | auto |
+| Maria K. (Gemüse) | chat | manual |
+| Edeka | call | auto |
+| Tim S. (Milchprodukte) | both | manual |
+| Julia M. (Obstkorb) | chat | auto |
+| Metzgerei Müller | call | auto |
+
+**Tests:** All 113 tests still passing after these changes. Build size unchanged.

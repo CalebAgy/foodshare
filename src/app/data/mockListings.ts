@@ -22,6 +22,8 @@ export const mockListings: Listing[] = [
     category: ['Backwaren', 'Brot', 'Gebäck'],
     createdBy: 'Bäckerei Schmidt',
     createdAt: new Date(new Date().setHours(8, 0, 0, 0)),
+    contactMethod: 'call',
+    confirmationType: 'auto',
   },
   {
     id: '2',
@@ -40,6 +42,8 @@ export const mockListings: Listing[] = [
     category: ['Gemüse', 'Obst', 'Frisch'],
     createdBy: 'Maria K.',
     createdAt: new Date(new Date().setHours(10, 30, 0, 0)),
+    contactMethod: 'chat',
+    confirmationType: 'manual',
   },
   {
     id: '3',
@@ -58,6 +62,8 @@ export const mockListings: Listing[] = [
     category: ['Supermarkt', 'Verschiedenes', 'Reduziert'],
     createdBy: 'Edeka Karlshorst',
     createdAt: new Date(new Date().setHours(16, 0, 0, 0)),
+    contactMethod: 'call',
+    confirmationType: 'auto',
   },
   {
     id: '4',
@@ -76,6 +82,8 @@ export const mockListings: Listing[] = [
     category: ['Milchprodukte', 'Käse', 'Joghurt'],
     createdBy: 'Tim S.',
     createdAt: new Date(new Date().setHours(12, 0, 0, 0)),
+    contactMethod: 'both',
+    confirmationType: 'manual',
   },
   {
     id: '5',
@@ -94,6 +102,8 @@ export const mockListings: Listing[] = [
     category: ['Obst', 'Frisch'],
     createdBy: 'Julia M.',
     createdAt: new Date(new Date().setHours(14, 20, 0, 0)),
+    contactMethod: 'chat',
+    confirmationType: 'auto',
   },
   {
     id: '6',
@@ -112,5 +122,7 @@ export const mockListings: Listing[] = [
     category: ['Fleisch', 'Wurst', 'Reduziert'],
     createdBy: 'Metzgerei Müller',
     createdAt: new Date(new Date().setHours(15, 0, 0, 0)),
+    contactMethod: 'call',
+    confirmationType: 'auto',
   },
 ];

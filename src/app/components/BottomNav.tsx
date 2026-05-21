@@ -1,7 +1,12 @@
 import { Home, Search, PlusCircle, User, Map } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 
-export function BottomNav() {
+interface BottomNavProps {
+  /** 'fixed' (default) overlays content; 'inline' flows inside a flex layout */
+  variant?: 'fixed' | 'inline';
+}
+
+export function BottomNav({ variant = 'fixed' }: BottomNavProps) {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -17,8 +22,12 @@ export function BottomNav() {
     { path: '/profile', icon: User, label: 'Profil' },
   ];
 
+  const navClass = variant === 'inline'
+    ? 'bg-background border-t z-50'
+    : 'fixed bottom-0 left-0 right-0 bg-background border-t z-50 safe-area-inset-bottom';
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 safe-area-inset-bottom">
+    <nav className={navClass}>
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-around px-1 py-2">
           {navItems.map((item) => {
