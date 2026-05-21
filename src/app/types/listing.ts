@@ -4,7 +4,14 @@ export interface Listing {
   title: string;
   description: string;
   location: string;
-  distance: number; // in km
+  /** Full street address, used for display */
+  address: string;
+  /** WGS-84 latitude */
+  latitude: number;
+  /** WGS-84 longitude */
+  longitude: number;
+  /** Stored fallback distance in km (used when user location is unavailable) */
+  distance: number;
   price: number; // 0 for free
   expiresAt: Date;
   imageUrl: string;

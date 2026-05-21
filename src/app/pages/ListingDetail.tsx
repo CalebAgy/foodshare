@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Clock, MapPin, Euro, Tag, Phone, MessageCircle, Share2, Heart } from 'lucide-react';
 import { mockListings } from '../data/mockListings';
@@ -6,12 +7,37 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
+import { useGeolocation } from '../hooks/useGeolocation';
+import { haversineDistance } from '../utils/haversineDistance';
+import { useUserBehavior } from '../hooks/useUserBehavior';
 
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+  const { latitude, longitude, requestLocation } = useGeolocation();
+  const { recordView } = useUserBehavior();
+
+  useEffect(() => {
+    requestLocation();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const listing = mockListings.find((l) => l.id === id);
+
+  // Record this view once the listing and (optionally) location are known
+  useEffect(() => {
+    if (!listing) return;
+    const dist =
+      latitude !== null && longitude !== null
+        ? haversineDistance(latitude, longitude, listing.latitude, listing.longitude)
+        : listing.distance;
+    recordView({
+      listingId: listing.id,
+      distance: dist,
+      categories: listing.category,
+      type: listing.type,
+      price: listing.price,
+    });
+  }, [listing?.id, latitude, longitude]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!listing) {
     return (
@@ -58,7 +84,7 @@ export default function ListingDetail() {
           size="icon"
           variant="secondary"
           className="absolute top-4 left-4 rounded-full shadow-lg"
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
         >
           <ArrowLeft className="size-5" />
         </Button>
@@ -126,7 +152,12 @@ export default function ListingDetail() {
               <MapPin className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Entfernung</p>
-                <p className="text-sm">{listing.distance} km</p>
+                <p className="text-sm">
+                  {latitude !== null && longitude !== null
+                    ? haversineDistance(latitude, longitude, listing.latitude, listing.longitude)
+                    : listing.distance}{' '}
+                  km
+                </p>
               </div>
             </div>
           </Card>

@@ -4,6 +4,7 @@ import ListingDetail from './pages/ListingDetail';
 import AddListing from './pages/AddListing';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
+import MapView from './pages/MapView';
 
 export const router = createBrowserRouter([
   {
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
   {
     path: '/search',
     Component: Search,
+  },
+  {
+    path: '/map',
+    Component: MapView,
   },
   {
     path: '/listing/:id',
