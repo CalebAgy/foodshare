@@ -5,31 +5,42 @@ import AddListing from './pages/AddListing';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
 import MapView from './pages/MapView';
+import Login from './pages/Login';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    Component: Home,
+    path: '/login',
+    Component: Login,
   },
   {
-    path: '/search',
-    Component: Search,
-  },
-  {
-    path: '/map',
-    Component: MapView,
-  },
-  {
-    path: '/listing/:id',
-    Component: ListingDetail,
-  },
-  {
-    path: '/add',
-    Component: AddListing,
-  },
-  {
-    path: '/profile',
-    Component: Profile,
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: '/',
+        Component: Home,
+      },
+      {
+        path: '/search',
+        Component: Search,
+      },
+      {
+        path: '/map',
+        Component: MapView,
+      },
+      {
+        path: '/listing/:id',
+        Component: ListingDetail,
+      },
+      {
+        path: '/add',
+        Component: AddListing,
+      },
+      {
+        path: '/profile',
+        Component: Profile,
+      },
+    ],
   },
   {
     path: '*',

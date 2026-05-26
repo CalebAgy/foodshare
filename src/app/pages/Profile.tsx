@@ -5,9 +5,11 @@ import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const menuItems = [
     { icon: Package, label: 'Meine Angebote', count: 3 },
@@ -105,7 +107,14 @@ export default function Profile() {
           </p>
         </Card>
 
-        <Button variant="outline" className="w-full" onClick={() => {}}>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            logout();
+            navigate('/login', { replace: true });
+          }}
+        >
           <LogOut className="size-4 mr-2" />
           Abmelden
         </Button>

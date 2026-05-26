@@ -24,6 +24,7 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(8, 0, 0, 0)),
     contactMethod: 'call',
     confirmationType: 'auto',
+    ratings: [5, 4, 5],
   },
   {
     id: '2',
@@ -44,6 +45,7 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(10, 30, 0, 0)),
     contactMethod: 'chat',
     confirmationType: 'manual',
+    ratings: [4, 4],
   },
   {
     id: '3',
@@ -64,6 +66,7 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(16, 0, 0, 0)),
     contactMethod: 'call',
     confirmationType: 'auto',
+    ratings: [4, 5, 4],
   },
   {
     id: '4',
@@ -84,6 +87,7 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(12, 0, 0, 0)),
     contactMethod: 'both',
     confirmationType: 'manual',
+    ratings: [4, 4, 5],
   },
   {
     id: '5',
@@ -104,6 +108,7 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(14, 20, 0, 0)),
     contactMethod: 'chat',
     confirmationType: 'auto',
+    ratings: [5],
   },
   {
     id: '6',
@@ -124,5 +129,6 @@ export const mockListings: Listing[] = [
     createdAt: new Date(new Date().setHours(15, 0, 0, 0)),
     contactMethod: 'call',
     confirmationType: 'auto',
+    ratings: [3, 4],
   },
 ];

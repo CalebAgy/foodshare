@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  ArrowLeft, Clock, MapPin, Euro, Tag, Share2, Heart,
+  ArrowLeft, Clock, MapPin, Euro, Tag, Share2, Heart, Star,
   MessageCircle, Phone, CheckCircle2, Loader2, X,
 } from 'lucide-react';
 import { mockListings } from '../data/mockListings';
@@ -37,6 +37,9 @@ export default function ListingDetail() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const listing = mockListings.find((l) => l.id === id);
+  const [ratingTick, setRatingTick] = useState(0);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [rated, setRated] = useState(false);
 
   useEffect(() => {
     if (!listing) return;
@@ -81,6 +84,12 @@ export default function ListingDetail() {
     return `${Math.floor(hours / 24)} ${Math.floor(hours / 24) === 1 ? 'Tag' : 'Tage'}`;
   };
 
+  const ratings = listing.ratings ?? [];
+  const averageRating = ratings.length
+    ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length
+    : null;
+  const displayRating = selectedRating ?? averageRating;
+
   const isUrgent = listing.expiresAt.getTime() - Date.now() < 3 * 60 * 60 * 1000;
   const dist = latitude !== null && longitude !== null
     ? haversineDistance(latitude, longitude, listing.latitude, listing.longitude)
@@ -95,6 +104,19 @@ export default function ListingDetail() {
     setTimeout(() => {
       setOrderState(listing.confirmationType === 'auto' ? 'confirmed' : 'pending');
     }, 900);
+  };
+
+  const handleRating = (stars: number) => {
+    const newRatings = [...ratings, stars];
+    listing.ratings = newRatings;
+    const index = mockListings.findIndex((m) => m.id === listing.id);
+    if (index !== -1) {
+      mockListings[index].ratings = newRatings;
+    }
+    setSelectedRating(stars);
+    setRatingTick((tick) => tick + 1);
+    setRated(true);
+    setTimeout(() => setRated(false), 1500);
   };
 
   // ---------------------------------------------------------------------------
@@ -162,7 +184,25 @@ export default function ListingDetail() {
         {/* Title */}
         <div>
           <h1 className="mb-1">{listing.title}</h1>
-          <p className="text-sm text-muted-foreground">von {listing.createdBy}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-muted-foreground">von {listing.createdBy}</p>
+            {displayRating !== null ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    size={16}
+                    className={star <= Math.round(displayRating) ? 'text-yellow-500' : 'text-muted-foreground'}
+                    fill={star <= Math.round(displayRating) ? 'currentColor' : 'none'}
+                    stroke={star <= Math.round(displayRating) ? 'none' : undefined}
+                  />
+                ))}
+                <span>{displayRating.toFixed(1)} ({ratings.length})</span>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">Noch keine Bewertungen</div>
+            )}
+          </div>
         </div>
 
         {/* Quick info cards */}
@@ -233,6 +273,38 @@ export default function ListingDetail() {
               <Badge key={cat} variant="outline">{cat}</Badge>
             ))}
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Bewertung */}
+        <div>
+          <h2 className="mb-3">Bewertung</h2>
+          <div className="flex items-center gap-2 mb-2">
+            {[1, 2, 3, 4, 5].map((star) => {
+              const fillThreshold = selectedRating ?? (averageRating !== null ? Math.round(averageRating) : 0);
+              const filled = star <= fillThreshold;
+              return (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => handleRating(star)}
+                  className="rounded-full p-1 transition hover:text-yellow-500"
+                  aria-label={`${star} Sterne bewerten`}
+                >
+                  <Star
+                    size={22}
+                    className={filled ? 'text-yellow-500' : 'text-muted-foreground'}
+                    fill={filled ? 'currentColor' : 'none'}
+                    stroke={filled ? 'none' : undefined}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {rated ? 'Danke für deine Bewertung!' : 'Tippe auf einen Stern, um zu bewerten.'}
+          </p>
         </div>
 
         <Separator />

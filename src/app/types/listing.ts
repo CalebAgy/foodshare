@@ -23,4 +23,6 @@ export interface Listing {
   contactMethod: 'chat' | 'call' | 'both';
   /** Whether pickups are confirmed instantly or require offerer approval */
   confirmationType: 'auto' | 'manual';
+  /** User ratings for this listing (1-5 stars) */
+  ratings?: number[];
 }

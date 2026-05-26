@@ -1,4 +1,4 @@
-import { Clock, MapPin, Euro, Tag } from 'lucide-react';
+import { Clock, MapPin, Euro, Tag, Star } from 'lucide-react';
 import { Listing } from '../types/listing';
 import { haversineDistance } from '../utils/haversineDistance';
 import { Card } from './ui/card';
@@ -58,6 +58,26 @@ export function ListingCard({ listing, userLocation }: ListingCardProps) {
 
         <div className="p-4">
           <h3 className="mb-2 line-clamp-2">{listing.title}</h3>
+
+          {listing.ratings && listing.ratings.length > 0 ? (
+            <div className="flex items-center gap-1 mb-3">
+              {Array.from({ length: 5 }, (_, index) => {
+                const filled = index < Math.round(listing.ratings!.reduce((s, v) => s + v, 0) / listing.ratings!.length);
+                return (
+                  <Star
+                    key={index}
+                    size={14}
+                    className={filled ? 'text-yellow-500' : 'text-muted-foreground'}
+                    fill={filled ? 'currentColor' : 'none'}
+                    stroke={filled ? 'none' : undefined}
+                  />
+                );
+              })}
+              <span className="text-xs text-muted-foreground">({listing.ratings.length})</span>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground mb-3">Noch keine Bewertungen</div>
+          )}
 
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
             {listing.description}
