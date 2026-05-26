@@ -5,6 +5,7 @@ import AddListing from './pages/AddListing';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
 import MapView from './pages/MapView';
+import LLM from './pages/LLM';
 import Login from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
       {
         path: '/map',
         Component: MapView,
+      },
+      {
+        path: '/llm',
+        Component: LLM,
       },
       {
         path: '/listing/:id',

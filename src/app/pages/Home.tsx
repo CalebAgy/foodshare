@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Sparkles } from 'lucide-react';
+import { Link } from 'react-router';
 import { mockListings } from '../data/mockListings';
 import { ListingCard } from '../components/ListingCard';
 import { FilterBar, FilterType } from '../components/FilterBar';
@@ -103,6 +104,13 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      <Link
+        to="/llm"
+        className="fixed bottom-[90px] right-4 z-50 inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-600/20 transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        <Sparkles className="size-4" /> KI-Assistent
+      </Link>
     </MobileLayout>
   );
 }
