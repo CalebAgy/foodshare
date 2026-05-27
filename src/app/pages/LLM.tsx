@@ -1,32 +1,76 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { generateLLMResponse } from '../hooks/useLLM';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router';
+import { Input } from '../components/ui/input';
+
+type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function LLM() {
-  const [prompt, setPrompt] = useState(
-    'Beschreibe kurz, warum Lebensmittelrettung wichtig ist und wie Studierende davon profitieren.'
-  );
-  const [responseText, setResponseText] = useState('');
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
-  const handleGenerate = async () => {
+  useEffect(() => {
+    // initial bot prompt
+    setMessages([{ role: 'assistant', content: 'Hallo! Was ist dein Anliegen?' }]);
+  }, []);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const reportKeywords = ['schimmel', 'schimmelig', 'verderb', 'nicht konsumierbar', 'nicht in guter', 'fremdkörper', 'ekel'];
+
+  async function sendMessage() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const userMsg: Msg = { role: 'user', content: trimmed };
+    setMessages((s) => [...s, userMsg]);
+    setInput('');
+
+    // detect report intent
+    const text = trimmed.toLowerCase();
+    const isReport = reportKeywords.some((k) => text.includes(k));
+
     setLoading(true);
-    setError(null);
-    setResponseText('');
-
     try {
-      const result = await generateLLMResponse(prompt);
-      setResponseText(result.output.trim());
+      if (isReport) {
+        const res = await fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: trimmed }),
+        });
+        const data = await res.json();
+        // Prefer model text; avoid JS precedence bugs (output vs message vs fallback).
+        const reply =
+          typeof data?.output === 'string' && data.output.trim() !== ''
+            ? data.output.trim()
+            : typeof data?.message === 'string' && data.message.trim() !== ''
+              ? data.message.trim()
+              : JSON.stringify(data, null, 2);
+        const botMsg: Msg = { role: 'assistant', content: reply };
+        setMessages((s) => [...s, botMsg]);
+      } else {
+        const system = 'Du bist ein Support-Assistent für FoodShare. Antworte knapp, freundlich und gib Handlungsempfehlungen.';
+        const llm = await generateLLMResponse(trimmed, { system });
+        const out = llm.output?.trim() || '';
+        const botMsg: Msg = {
+          role: 'assistant',
+          content: out || '(Leere Antwort vom Modell – prüfe Ollama/Modell.)',
+        };
+        setMessages((s) => [...s, botMsg]);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fehler beim LLM-Aufruf');
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessages((s) => [...s, { role: 'assistant', content: `Fehler: ${msg}` }]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -37,40 +81,27 @@ export default function LLM() {
           </Link>
           <div>
             <h1 className="text-2xl font-semibold">KI-Assistent</h1>
-            <p className="text-sm text-muted-foreground">Lokal mit Ollama verbinden und Texte generieren.</p>
+            <p className="text-sm text-muted-foreground">Support-Bot: meldungen zu unzufriedenen Kunden</p>
           </div>
         </div>
 
-        <section className="space-y-4 rounded-2xl border border-input bg-surface p-5 shadow-sm">
-          <label className="block text-sm font-medium text-foreground">Prompt</label>
-          <Textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            className="min-h-[160px]"
-          />
+        <section className="rounded-2xl border border-input bg-surface p-4 shadow-sm">
+          <div className="space-y-3 max-h-[60vh] overflow-auto px-2 py-1">
+            {messages.map((m, idx) => (
+              <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] rounded-lg px-3 py-2 ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border'}`}>
+                  <div className="text-sm whitespace-pre-wrap">{m.content}</div>
+                </div>
+              </div>
+            ))}
+            <div ref={endRef} />
+          </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-sm text-muted-foreground">
-              Verwende dein lokal laufendes Ollama unter <code>127.0.0.1:11434</code>.
-            </span>
-            <Button onClick={handleGenerate} disabled={loading}>
-              {loading ? 'Generiere …' : 'Generieren'}
-            </Button>
+          <div className="mt-4 flex gap-2">
+            <Input placeholder="Schreibe hier…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+            <Button onClick={sendMessage} disabled={loading || !input.trim()}>{loading ? 'Sende…' : 'Senden'}</Button>
           </div>
         </section>
-
-        {error ? (
-          <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive mt-4">
-            {error}
-          </div>
-        ) : null}
-
-        {responseText ? (
-          <section className="rounded-2xl border border-input bg-background p-5 mt-4 shadow-sm">
-            <h2 className="text-lg font-semibold">Antwort</h2>
-            <p className="whitespace-pre-wrap mt-3 text-sm leading-7">{responseText}</p>
-          </section>
-        ) : null}
       </main>
     </div>
   );
