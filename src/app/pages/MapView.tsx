@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Bell, RotateCcw } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { mockListings } from '../data/mockListings';
 import { BottomNav } from '../components/BottomNav';
 import { LocationPermissionBanner } from '../components/LocationPermissionBanner';
@@ -107,7 +107,7 @@ function formatTimeLeft(expiresAt: Date): string {
 export default function MapView() {
   const navigate = useNavigate();
   const { latitude, longitude, permissionState, requestLocation } = useGeolocation();
-  const { behavior, clearBehavior } = useUserBehavior();
+  const { behavior, recordView } = useUserBehavior();
 
   useEffect(() => {
     requestLocation();
@@ -166,17 +166,6 @@ export default function MapView() {
               </p>
             </div>
             <div className="flex items-center gap-1">
-              {behavior.views.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs text-muted-foreground gap-1"
-                  onClick={clearBehavior}
-                >
-                  <RotateCcw className="size-3.5" />
-                  Reset
-                </Button>
-              )}
               <Button size="icon" variant="ghost" onClick={requestLocation}>
                 <Bell className="size-5" />
               </Button>
@@ -324,7 +313,18 @@ export default function MapView() {
 
                       {/* CTA */}
                       <button
-                        onClick={() => navigate(`/listing/${listing.id}`)}
+                        onClick={() => {
+                          recordView({
+                            listingId: listing.id,
+                            distance: userPos
+                              ? haversineDistance(userPos[0], userPos[1], listing.latitude, listing.longitude)
+                              : listing.distance,
+                            categories: listing.category,
+                            type: listing.type,
+                            price: listing.price,
+                          });
+                          navigate(`/listing/${listing.id}`);
+                        }}
                         style={{
                           width: '100%', padding: '8px 0',
                           background: '#16a34a', color: '#fff',

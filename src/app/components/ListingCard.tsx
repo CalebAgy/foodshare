@@ -59,13 +59,13 @@ export function ListingCard({ listing, userLocation, recommendationTier, recomme
             </Badge>
           )}
           {recommendationTier === 'hot' && (
-            <Badge className="absolute bottom-2 left-2 bg-orange-500 hover:bg-orange-600">
-              {recommendationReason || 'Empfohlen'}
+            <Badge className="absolute bottom-2 left-2 bg-orange-500 hover:bg-orange-600 text-white">
+              🔥 Top
             </Badge>
           )}
           {recommendationTier === 'warm' && (
-            <Badge className="absolute bottom-2 left-2 bg-yellow-500 hover:bg-yellow-600 text-white">
-              {recommendationReason || 'Passend'}
+            <Badge className="absolute bottom-2 left-2 bg-amber-400 hover:bg-amber-500 text-white">
+              ⭐ Passend
             </Badge>
           )}
         </div>
@@ -133,6 +133,23 @@ export function ListingCard({ listing, userLocation, recommendationTier, recomme
                 </Badge>
               ))}
             </div>
+
+            {recommendationTier && (
+              <div className={`flex items-center justify-between text-xs pt-2 border-t ${
+                recommendationTier === 'hot' ? 'text-orange-600' :
+                recommendationTier === 'warm' ? 'text-amber-600' :
+                'text-muted-foreground'
+              }`}>
+                <span className="font-medium">
+                  {recommendationTier === 'hot' ? '🔥 Sehr empfohlen' :
+                   recommendationTier === 'warm' ? '⭐ Empfohlen' :
+                   '○ Wenig passend'}
+                </span>
+                {recommendationReason && recommendationTier !== 'normal' && (
+                  <span className="truncate ml-2 opacity-80">{recommendationReason}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Card>
