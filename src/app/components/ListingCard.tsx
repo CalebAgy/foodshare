@@ -1,5 +1,6 @@
 import { Clock, MapPin, Euro, Tag, Star } from 'lucide-react';
 import { Listing } from '../types/listing';
+import { RecommendationTier } from '../utils/recommendationEngine';
 import { haversineDistance } from '../utils/haversineDistance';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -8,9 +9,12 @@ import { Link } from 'react-router';
 interface ListingCardProps {
   listing: Listing;
   userLocation?: { latitude: number; longitude: number };
+  recommendationTier?: RecommendationTier;
+  recommendationReason?: string;
+  onClick?: () => void;
 }
 
-export function ListingCard({ listing, userLocation }: ListingCardProps) {
+export function ListingCard({ listing, userLocation, recommendationTier, recommendationReason, onClick }: ListingCardProps) {
   const getTimeRemaining = () => {
     const now = new Date();
     const diff = listing.expiresAt.getTime() - now.getTime();
@@ -35,7 +39,7 @@ export function ListingCard({ listing, userLocation }: ListingCardProps) {
     : listing.distance;
 
   return (
-    <Link to={`/listing/${listing.id}`} className="block">
+    <Link to={`/listing/${listing.id}`} className="block" onClick={onClick}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
         <div className="relative">
           <img
@@ -52,6 +56,16 @@ export function ListingCard({ listing, userLocation }: ListingCardProps) {
           {listing.price === 0 && (
             <Badge className="absolute top-2 left-2 bg-green-600 hover:bg-green-700">
               Kostenlos
+            </Badge>
+          )}
+          {recommendationTier === 'hot' && (
+            <Badge className="absolute bottom-2 left-2 bg-orange-500 hover:bg-orange-600">
+              {recommendationReason || 'Empfohlen'}
+            </Badge>
+          )}
+          {recommendationTier === 'warm' && (
+            <Badge className="absolute bottom-2 left-2 bg-yellow-500 hover:bg-yellow-600 text-white">
+              {recommendationReason || 'Passend'}
             </Badge>
           )}
         </div>

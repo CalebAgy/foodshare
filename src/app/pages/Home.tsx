@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Bell, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
 import { mockListings } from '../data/mockListings';
@@ -8,6 +8,9 @@ import { LocationPermissionBanner } from '../components/LocationPermissionBanner
 import { LocationFallback } from '../components/LocationFallback';
 import { MobileLayout } from '../components/MobileLayout';
 import { useGeolocation } from '../hooks/useGeolocation';
+import { useUserBehavior } from '../hooks/useUserBehavior';
+import { useRecommendationModel } from '../hooks/useRecommendationModel';
+import { scoreListings } from '../utils/recommendationEngine';
 import { haversineDistance } from '../utils/haversineDistance';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -16,6 +19,7 @@ export default function Home() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { latitude, longitude, permissionState, requestLocation } = useGeolocation();
+  const { behavior, recordView } = useUserBehavior();
 
   // Request location automatically on first mount
   useEffect(() => {
@@ -26,6 +30,13 @@ export default function Home() {
     latitude !== null && longitude !== null
       ? { latitude, longitude }
       : null;
+
+  useRecommendationModel(mockListings, behavior.views, latitude, longitude);
+
+  const scores = useMemo(
+    () => scoreListings(mockListings, behavior.views, latitude, longitude),
+    [behavior.views, latitude, longitude],
+  );
 
   const filteredListings = useMemo(() => {
     const base = mockListings.filter((listing) => {
@@ -39,6 +50,13 @@ export default function Home() {
       return matchesFilter && matchesSearch;
     });
 
+    // Once the model has enough data, sort by learned score; otherwise by distance
+    if (scores.size > 0) {
+      return [...base].sort(
+        (a, b) => (scores.get(b.id)?.score ?? 0) - (scores.get(a.id)?.score ?? 0),
+      );
+    }
+
     if (userLocation) {
       return [...base].sort(
         (a, b) =>
@@ -48,7 +66,19 @@ export default function Home() {
     }
 
     return base;
-  }, [filter, searchQuery, userLocation]);
+  }, [filter, searchQuery, userLocation, scores]);
+
+  const handleCardClick = useCallback((listing: typeof mockListings[0]) => {
+    recordView({
+      listingId: listing.id,
+      distance: userLocation
+        ? haversineDistance(userLocation.latitude, userLocation.longitude, listing.latitude, listing.longitude)
+        : listing.distance,
+      categories: listing.category,
+      type: listing.type,
+      price: listing.price,
+    });
+  }, [recordView, userLocation]);
 
   return (
     <MobileLayout>
@@ -99,6 +129,9 @@ export default function Home() {
                 key={listing.id}
                 listing={listing}
                 userLocation={userLocation ?? undefined}
+                recommendationTier={scores.get(listing.id)?.tier}
+                recommendationReason={scores.get(listing.id)?.reason}
+                onClick={() => handleCardClick(listing)}
               />
             ))}
           </div>

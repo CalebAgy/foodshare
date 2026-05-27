@@ -1,15 +1,23 @@
 import { useNavigate } from 'react-router';
-import { User, Settings, Heart, Package, ChevronRight, LogOut } from 'lucide-react';
+import { User, Settings, Heart, Package, ChevronRight, LogOut, RotateCcw } from 'lucide-react';
 import { MobileLayout } from '../components/MobileLayout';
 import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import { useAuth } from '../hooks/useAuth';
+import { useUserBehavior } from '../hooks/useUserBehavior';
+import { resetModel } from '../utils/recommendationEngine';
 
 export default function Profile() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { clearBehavior } = useUserBehavior();
+
+  const handleResetRecommendations = () => {
+    clearBehavior();
+    resetModel();
+  };
 
   const menuItems = [
     { icon: Package, label: 'Meine Angebote', count: 3 },
@@ -106,6 +114,15 @@ export default function Profile() {
             vor der Tonne gerettet!
           </p>
         </Card>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleResetRecommendations}
+        >
+          <RotateCcw className="size-4 mr-2" />
+          Empfehlungen zurücksetzen
+        </Button>
 
         <Button
           variant="outline"

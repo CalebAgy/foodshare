@@ -3,13 +3,17 @@ import type { Listing } from '../types/listing';
 import type { ViewEvent } from '../hooks/useUserBehavior';
 import { haversineDistance } from './haversineDistance';
 
-// Single Dense layer, no bias — equivalent to a weighted dot product.
-// Weights encode the same domain intuitions as the previous hand-crafted
-// coefficients; in production they would be trained on real click-through data.
+const MODEL_STORAGE_KEY = 'localstorage://foodshare-scoring-model';
+const DEFAULT_KERNEL = [[0.35], [0.25], [0.20], [0.10], [0.10]];
+
+// Single Dense layer, no bias — a linear weighted sum of 5 features.
+// Weights start as hand-crafted intuitions; model.fit() updates them from
+// real click events stored in useUserBehavior.
 const _scoringModel = (() => {
   const m = tf.sequential();
   m.add(tf.layers.dense({ units: 1, useBias: false, inputShape: [5] }));
-  m.setWeights([tf.tensor2d([[0.35], [0.25], [0.20], [0.10], [0.10]])]);
+  m.setWeights([tf.tensor2d(DEFAULT_KERNEL)]);
+  m.compile({ optimizer: tf.train.adam(0.01), loss: 'meanSquaredError' });
   return m;
 })();
 
@@ -210,4 +214,65 @@ export function scoreListings(
   }
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Persistence & online training
+// ---------------------------------------------------------------------------
+
+export async function saveModel(): Promise<void> {
+  await _scoringModel.save(MODEL_STORAGE_KEY);
+}
+
+export async function loadSavedModel(): Promise<boolean> {
+  try {
+    const loaded = await tf.loadLayersModel(MODEL_STORAGE_KEY);
+    _scoringModel.setWeights(loaded.getWeights());
+    loaded.dispose();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function resetModel(): void {
+  _scoringModel.setWeights([tf.tensor2d(DEFAULT_KERNEL)]);
+  tf.io.removeModel(MODEL_STORAGE_KEY).catch(() => {});
+}
+
+/**
+ * Train the model on the user's accumulated view history.
+ * Viewed listings are treated as positive examples (target 1.0),
+ * unviewed listings as negative (target 0.0).
+ * Saves updated weights to localStorage after training.
+ */
+export async function trainOnBehavior(
+  listings: Listing[],
+  views: ViewEvent[],
+  userLat: number | null,
+  userLng: number | null,
+): Promise<void> {
+  if (views.length < MIN_VIEWS) return;
+
+  const viewedIds = new Set(views.map((v) => v.listingId));
+  const xs: number[][] = [];
+  const ys: number[] = [];
+
+  for (const listing of listings) {
+    const catS = computeCategoryScore(listing, views);
+    const distS = computeDistanceScore(listing, views, userLat, userLng);
+    const typS = computeTypeScore(listing, views);
+    const priS = computePriceScore(listing, views);
+    const urgS = computeUrgencyScore(listing);
+    xs.push([catS, distS, typS, priS, urgS]);
+    ys.push(viewedIds.has(listing.id) ? 1.0 : 0.0);
+  }
+
+  const xsTensor = tf.tensor2d(xs);
+  const ysTensor = tf.tensor2d(ys.map((y) => [y]));
+
+  await _scoringModel.fit(xsTensor, ysTensor, { epochs: 30, verbose: 0 });
+
+  tf.dispose([xsTensor, ysTensor]);
+  await saveModel();
 }
