@@ -1,6 +1,25 @@
+import * as tf from '@tensorflow/tfjs';
 import type { Listing } from '../types/listing';
 import type { ViewEvent } from '../hooks/useUserBehavior';
 import { haversineDistance } from './haversineDistance';
+
+// Single Dense layer, no bias — equivalent to a weighted dot product.
+// Weights encode the same domain intuitions as the previous hand-crafted
+// coefficients; in production they would be trained on real click-through data.
+const _scoringModel = (() => {
+  const m = tf.sequential();
+  m.add(tf.layers.dense({ units: 1, useBias: false, inputShape: [5] }));
+  m.setWeights([tf.tensor2d([[0.35], [0.25], [0.20], [0.10], [0.10]])]);
+  return m;
+})();
+
+function predictScore(catS: number, distS: number, typS: number, priS: number, urgS: number): number {
+  const input = tf.tensor2d([[catS, distS, typS, priS, urgS]]);
+  const output = _scoringModel.predict(input) as tf.Tensor;
+  const score = output.dataSync()[0];
+  tf.dispose([input, output]);
+  return score;
+}
 
 export type RecommendationTier = 'hot' | 'warm' | 'normal';
 
@@ -175,12 +194,7 @@ export function scoreListings(
     const priS = computePriceScore(listing, views);
     const urgS = computeUrgencyScore(listing);
 
-    const score =
-      0.35 * catS +
-      0.25 * distS +
-      0.20 * typS +
-      0.10 * priS +
-      0.10 * urgS;
+    const score = predictScore(catS, distS, typS, priS, urgS);
 
     const tier: RecommendationTier =
       score >= HOT_THRESHOLD ? 'hot'
