@@ -166,7 +166,12 @@ export default function MapView() {
               </p>
             </div>
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" onClick={requestLocation}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={requestLocation}
+                aria-label="Standort aktualisieren"
+              >
                 <Bell className="size-5" />
               </Button>
             </div>

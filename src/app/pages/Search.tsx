@@ -7,6 +7,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { mockListings } from '../data/mockListings';
 import { ListingCard } from '../components/ListingCard';
+import { toast } from 'sonner';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,7 +46,12 @@ export default function Search() {
                 onChange={(e) => setLocation(e.target.value)}
               />
             </div>
-            <Button size="icon" variant="outline">
+            <Button
+              size="icon"
+              variant="outline"
+              aria-label="Filter"
+              onClick={() => toast('Weitere Filter sind bald verfügbar.')}
+            >
               <SlidersHorizontal className="size-5" />
             </Button>
           </div>

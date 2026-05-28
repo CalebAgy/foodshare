@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Card } from '../components/ui/card';
 import { toast } from 'sonner';
 
+type FormErrors = Partial<Record<'title' | 'description' | 'location' | 'price' | 'expiresIn' | 'contact', string>>;
+
 export default function AddListing() {
   const navigate = useNavigate();
   const [type, setType] = useState<'store' | 'private'>('private');
@@ -21,13 +23,46 @@ export default function AddListing() {
     contact: '',
     expiresIn: '',
   });
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // Field-level validation — every required field gets a specific, actionable message.
+  const validate = (data: typeof formData): FormErrors => {
+    const e: FormErrors = {};
+    if (!data.title.trim()) e.title = 'Bitte gib einen Titel ein.';
+    if (!data.description.trim()) e.description = 'Bitte beschreibe dein Angebot.';
+    if (!data.location.trim()) e.location = 'Bitte gib einen Standort an.';
+
+    if (!data.expiresIn.trim()) {
+      e.expiresIn = 'Bitte gib an, für wie viele Stunden das Angebot gilt.';
+    } else {
+      const hours = Number(data.expiresIn);
+      if (!Number.isFinite(hours) || hours <= 0) {
+        e.expiresIn = 'Bitte gib eine Stundenzahl größer als 0 ein.';
+      }
+    }
+
+    if (data.price.trim()) {
+      const price = Number(data.price);
+      if (!Number.isFinite(price) || price < 0) {
+        e.price = 'Der Preis darf nicht negativ sein.';
+      }
+    }
+
+    if (!data.contact.trim()) e.contact = 'Bitte gib eine Kontaktmöglichkeit an.';
+    return e;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate form
-    if (!formData.title || !formData.description || !formData.location) {
-      toast.error('Bitte fülle alle Pflichtfelder aus');
+
+    const nextErrors = validate(formData);
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error('Bitte korrigiere die markierten Felder');
+      // Move focus to the first field with an error so keyboard users land on it.
+      const firstField = Object.keys(nextErrors)[0];
+      document.getElementById(firstField)?.focus();
       return;
     }
 
@@ -35,15 +70,16 @@ export default function AddListing() {
     toast.success('Angebot erfolgreich erstellt!', {
       description: 'Dein Angebot ist jetzt für andere sichtbar.',
     });
-    
-    // Navigate back to home
+
     setTimeout(() => {
       navigate('/');
     }, 1500);
   };
 
-  const handleChange = (field: string, value: string) => {
+  // Clear a field's error as soon as the user starts correcting it.
+  const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => (prev[field as keyof FormErrors] ? { ...prev, [field]: undefined } : prev));
   };
 
   return (
@@ -51,10 +87,11 @@ export default function AddListing() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background border-b">
         <div className="px-4 py-4 flex items-center gap-3">
-          <Button 
+          <Button
             size="icon"
-            variant="ghost" 
+            variant="ghost"
             onClick={() => navigate('/')}
+            aria-label="Zurück zur Übersicht"
           >
             <ArrowLeft className="size-5" />
           </Button>
@@ -124,9 +161,15 @@ export default function AddListing() {
               placeholder="z.B. Frisches Obst abzugeben"
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
-              required
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? 'title-error' : undefined}
               className="mt-2"
             />
+            {errors.title && (
+              <p id="title-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.title}
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -138,9 +181,15 @@ export default function AddListing() {
               rows={4}
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              required
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? 'description-error' : undefined}
               className="mt-2"
             />
+            {errors.description && (
+              <p id="description-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.description}
+              </p>
+            )}
           </div>
 
           {/* Location */}
@@ -151,9 +200,15 @@ export default function AddListing() {
               placeholder="Straße, PLZ, Stadt"
               value={formData.location}
               onChange={(e) => handleChange('location', e.target.value)}
-              required
+              aria-invalid={!!errors.location}
+              aria-describedby={errors.location ? 'location-error' : undefined}
               className="mt-2"
             />
+            {errors.location && (
+              <p id="location-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.location}
+              </p>
+            )}
           </div>
 
           {/* Price */}
@@ -163,14 +218,23 @@ export default function AddListing() {
               id="price"
               type="number"
               step="0.01"
+              min="0"
               placeholder="0.00 für kostenlos"
               value={formData.price}
               onChange={(e) => handleChange('price', e.target.value)}
+              aria-invalid={!!errors.price}
+              aria-describedby={errors.price ? 'price-error' : 'price-hint'}
               className="mt-2"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              0 eingeben für kostenlose Abgabe
-            </p>
+            {errors.price ? (
+              <p id="price-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.price}
+              </p>
+            ) : (
+              <p id="price-hint" className="text-xs text-muted-foreground mt-1">
+                0 eingeben für kostenlose Abgabe
+              </p>
+            )}
           </div>
 
           {/* Expires In */}
@@ -179,12 +243,19 @@ export default function AddListing() {
             <Input
               id="expiresIn"
               type="number"
+              min="1"
               placeholder="z.B. 6"
               value={formData.expiresIn}
               onChange={(e) => handleChange('expiresIn', e.target.value)}
-              required
+              aria-invalid={!!errors.expiresIn}
+              aria-describedby={errors.expiresIn ? 'expiresIn-error' : undefined}
               className="mt-2"
             />
+            {errors.expiresIn && (
+              <p id="expiresIn-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.expiresIn}
+              </p>
+            )}
           </div>
 
           {/* Contact */}
@@ -195,9 +266,15 @@ export default function AddListing() {
               placeholder="Telefon oder bevorzugte Methode"
               value={formData.contact}
               onChange={(e) => handleChange('contact', e.target.value)}
-              required
+              aria-invalid={!!errors.contact}
+              aria-describedby={errors.contact ? 'contact-error' : undefined}
               className="mt-2"
             />
+            {errors.contact && (
+              <p id="contact-error" role="alert" className="text-xs text-destructive mt-1">
+                {errors.contact}
+              </p>
+            )}
           </div>
         </form>
       </main>

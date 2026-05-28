@@ -64,6 +64,16 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
+// Spy on the behavior tracker so we can assert clicks are recorded
+const mockRecordView = vi.fn();
+vi.mock('../app/hooks/useUserBehavior', () => ({
+  useUserBehavior: () => ({
+    behavior: { views: [] },
+    recordView: mockRecordView,
+    clearBehavior: vi.fn(),
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -159,6 +169,48 @@ describe('AC-7: Marker popup button navigates to listing detail', () => {
     );
     const buttons = screen.getAllByRole('button', { name: /Angebot öffnen/i });
     fireEvent.click(buttons[5]);
+    expect(mockNavigate).toHaveBeenCalledWith('/listing/6');
+  });
+});
+
+describe('Map "Angebot öffnen" records a view for the recommendation model', () => {
+  it('clicking the button records a view event for that listing', async () => {
+    mockRecordView.mockReset();
+    const MapView = (await import('../app/pages/MapView')).default;
+    render(
+      <MemoryRouter>
+        <MapView />
+      </MemoryRouter>
+    );
+    const buttons = screen.getAllByRole('button', { name: /Angebot öffnen/i });
+    fireEvent.click(buttons[0]);
+
+    expect(mockRecordView).toHaveBeenCalledTimes(1);
+    expect(mockRecordView).toHaveBeenCalledWith(
+      expect.objectContaining({
+        listingId: '1',
+        type: 'store',
+        categories: ['Backwaren', 'Brot', 'Gebäck'],
+        price: 0,
+      })
+    );
+  });
+
+  it('records the click before navigating away', async () => {
+    mockRecordView.mockReset();
+    mockNavigate.mockReset();
+    const MapView = (await import('../app/pages/MapView')).default;
+    render(
+      <MemoryRouter>
+        <MapView />
+      </MemoryRouter>
+    );
+    const buttons = screen.getAllByRole('button', { name: /Angebot öffnen/i });
+    fireEvent.click(buttons[5]);
+
+    expect(mockRecordView).toHaveBeenCalledWith(
+      expect.objectContaining({ listingId: '6', type: 'store' })
+    );
     expect(mockNavigate).toHaveBeenCalledWith('/listing/6');
   });
 });

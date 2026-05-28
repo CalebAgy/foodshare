@@ -14,6 +14,7 @@ import { scoreListings } from '../utils/recommendationEngine';
 import { haversineDistance } from '../utils/haversineDistance';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { toast } from 'sonner';
 
 export default function Home() {
   const [filter, setFilter] = useState<FilterType>('all');
@@ -90,7 +91,12 @@ export default function Home() {
               <h1 className="text-green-600">FoodShare</h1>
               <p className="text-sm text-muted-foreground">Lebensmittel retten</p>
             </div>
-            <Button size="icon" variant="ghost">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Benachrichtigungen"
+              onClick={() => toast('Du hast keine neuen Benachrichtigungen.')}
+            >
               <Bell className="size-5" />
             </Button>
           </div>

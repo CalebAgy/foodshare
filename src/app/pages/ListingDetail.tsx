@@ -13,6 +13,7 @@ import { Separator } from '../components/ui/separator';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { haversineDistance } from '../utils/haversineDistance';
 import { useUserBehavior } from '../hooks/useUserBehavior';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Order state machine:  idle → requesting → pending | confirmed
@@ -40,6 +41,7 @@ export default function ListingDetail() {
   const [ratingTick, setRatingTick] = useState(0);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [rated, setRated] = useState(false);
+  const [favorite, setFavorite] = useState(false);
 
   useEffect(() => {
     if (!listing) return;
@@ -119,6 +121,30 @@ export default function ListingDetail() {
     setTimeout(() => setRated(false), 1500);
   };
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: listing.title, url });
+      } catch {
+        // User dismissed the share sheet — nothing to do.
+      }
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link in die Zwischenablage kopiert');
+    } else {
+      toast('Teilen wird auf diesem Gerät nicht unterstützt.');
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    setFavorite((prev) => {
+      const next = !prev;
+      toast(next ? 'Zu Favoriten hinzugefügt' : 'Aus Favoriten entfernt');
+      return next;
+    });
+  };
+
   // ---------------------------------------------------------------------------
   // Contact preference labels
   // ---------------------------------------------------------------------------
@@ -151,16 +177,30 @@ export default function ListingDetail() {
           variant="secondary"
           className="absolute top-4 left-4 rounded-full shadow-lg"
           onClick={() => navigate(-1)}
+          aria-label="Zurück"
         >
           <ArrowLeft className="size-5" />
         </Button>
 
         <div className="absolute top-4 right-4 flex gap-2">
-          <Button size="icon" variant="secondary" className="rounded-full shadow-lg">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="rounded-full shadow-lg"
+            onClick={handleShare}
+            aria-label="Angebot teilen"
+          >
             <Share2 className="size-5" />
           </Button>
-          <Button size="icon" variant="secondary" className="rounded-full shadow-lg">
-            <Heart className="size-5" />
+          <Button
+            size="icon"
+            variant="secondary"
+            className="rounded-full shadow-lg"
+            onClick={handleToggleFavorite}
+            aria-label={favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
+            aria-pressed={favorite}
+          >
+            <Heart className={`size-5 ${favorite ? 'fill-red-500 text-red-500' : ''}`} />
           </Button>
         </div>
 

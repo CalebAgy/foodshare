@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "serve:llm": "node server.js",
+    "serve:llm": "OLLAMA_MODEL=llama3.2:3b node server.js",
     "build": "vite build",
     "test": "vitest",
     "test:run": "vitest run",

@@ -8,6 +8,7 @@ import { Separator } from '../components/ui/separator';
 import { useAuth } from '../hooks/useAuth';
 import { useUserBehavior } from '../hooks/useUserBehavior';
 import { resetModel } from '../utils/recommendationEngine';
+import { toast } from 'sonner';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -72,10 +73,10 @@ export default function Profile() {
         {menuItems.map((item, index) => {
           const Icon = item.icon;
           return (
-            <Card 
+            <Card
               key={index}
               className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => {}}
+              onClick={() => toast(`"${item.label}" ist bald verfügbar.`)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

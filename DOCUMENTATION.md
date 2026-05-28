@@ -15,6 +15,7 @@
 12. [App Usage Flows](#12-app-usage-flows)
 13. [Testing](#13-testing)
 14. [Known Limitations and Next Steps](#14-known-limitations-and-next-steps)
+15. [ISO 9241 Conformance](#15-iso-9241-conformance)
 
 ---
 
@@ -42,15 +43,21 @@ FoodShare is a **mobile-first progressive web app** that connects surplus food p
 | Forms | React Hook Form | 7 | Form state management |
 | Toasts | Sonner | 2 | Notification toasts |
 | Animations | Motion (Framer) | 12 | Animations |
+| Machine Learning | TensorFlow.js | 4 | In-browser recommendation model (trains in localStorage) |
+| LLM Assistant | Ollama (via local proxy) | — | KI-Assistent text generation (`/llm`) |
+| PWA | Vite + service worker | — | Installable, "add to home screen" |
 | Testing | Vitest + Testing Library | 4 / 16 | Unit and component tests |
 | Language | TypeScript | — | Type safety |
 | Package Manager | npm / pnpm | — | Dependency management |
 
+**Partially integrated:**
+- **Authentication** — mock auth (`useAuth` + `ProtectedRoute`) gates all routes behind `/login`; no real backend identity yet
+- **LLM assistant** — calls a local Ollama instance through `server.js`; requires Ollama running at `127.0.0.1:11434`
+
 **Not yet integrated:**
-- Backend / API (no server exists)
-- Database (all data is mocked in-memory)
-- Authentication (all routes are public)
-- Push notifications
+- Backend / API for listings (all listing data is mocked in-memory)
+- Persistent database
+- Real push notifications (reminder logic is a contract spec only)
 
 ---
 
@@ -143,30 +150,38 @@ foodshare/
 │   │   │   └── mockListings.ts         6 hardcoded Berlin listings with coords
 │   │   │
 │   │   ├── hooks/
-│   │   │   └── useGeolocation.ts       Browser geolocation hook
+│   │   │   ├── useGeolocation.ts       Browser geolocation hook
+│   │   │   ├── useAuth.tsx             Mock auth context (login/logout, localStorage)
+│   │   │   ├── useUserBehavior.ts      Records listing views to localStorage
+│   │   │   ├── useRecommendationModel.ts  Loads/trains the TF.js model on view history
+│   │   │   └── useLLM.ts               Ollama LLM request helper
 │   │   │
 │   │   ├── utils/
-│   │   │   └── haversineDistance.ts    Distance calculation (km between coords)
+│   │   │   ├── haversineDistance.ts    Distance calculation (km between coords)
+│   │   │   └── recommendationEngine.ts TF.js scoring model + feature functions
 │   │   │
 │   │   ├── pages/
-│   │   │   ├── Home.tsx                Browse + search + filter + distance sort
+│   │   │   ├── Home.tsx                Browse + search + filter + distance/ML sort
 │   │   │   ├── Search.tsx              Advanced search with categories
-│   │   │   ├── ListingDetail.tsx       Single listing view + contact button
-│   │   │   ├── AddListing.tsx          Create offer form
+│   │   │   ├── ListingDetail.tsx       Listing view + order flow + ratings + favorite/share
+│   │   │   ├── AddListing.tsx          Create offer form (field-level validation)
 │   │   │   ├── MapView.tsx             Leaflet map with all listing markers
-│   │   │   └── Profile.tsx             User profile (hardcoded)
+│   │   │   ├── Profile.tsx             User profile + reset recommendations + logout
+│   │   │   ├── Login.tsx               Mock login form
+│   │   │   └── LLM.tsx                 KI-Assistent (Ollama) page
 │   │   │
 │   │   └── components/
 │   │       ├── MobileLayout.tsx        Max-width wrapper + bottom nav
-│   │       ├── BottomNav.tsx           5-tab fixed bottom navigation
-│   │       ├── ListingCard.tsx         Listing preview card
+│   │       ├── BottomNav.tsx           5-tab navigation (fixed | inline variant)
+│   │       ├── ListingCard.tsx         Listing preview card + recommendation tier
 │   │       ├── FilterBar.tsx           Store / Private / All filter
+│   │       ├── ProtectedRoute.tsx      Redirects unauthenticated users to /login
 │   │       ├── LocationPermissionBanner.tsx  "Standort aktivieren" banner
 │   │       ├── LocationFallback.tsx    Denied/unavailable error state
 │   │       └── ui/                     50+ shadcn/ui base components
 │   │
 │   ├── __tests__/
-│   │   ├── setup.ts                    jest-dom setup
+│   │   ├── setup.ts                    jest-dom setup + ResizeObserver polyfill
 │   │   ├── ac1-geolocation-hook.test.ts
 │   │   ├── ac2-location-permission-ui.test.tsx
 │   │   ├── ac3-listing-coordinates.test.ts
@@ -175,6 +190,9 @@ foodshare/
 │   │   ├── ac6-ac7-map-view.test.tsx
 │   │   ├── ac8-location-fallback.test.tsx
 │   │   ├── haversine-distance.test.ts
+│   │   ├── recommendation-engine.test.ts
+│   │   ├── recommendation-model-training.test.ts
+│   │   ├── iso9241-form-validation.test.tsx
 │   │   ├── student-category-filter.test.ts
 │   │   └── student-reminder.test.ts
 │   │
@@ -274,13 +292,29 @@ All 6 listings use real street addresses near **HTW Berlin, Oberschöneweide** (
 - User stats (hardcoded)
 - Impact metric (kg food saved)
 
+### ✅ Personalized Recommendations (TensorFlow.js)
+- In-browser `Dense(1)` model scores each listing from the user's view history
+- Trains online (`model.fit`) on clicks and persists weights to `localStorage`
+- Listings show a recommendation tier (🔥 Top / ⭐ Passend / normal); map markers are tiered
+- "Empfehlungen zurücksetzen" in Profile clears history and restores default weights
+
+### ✅ Mock Authentication
+- `/login` form; `useAuth` stores a mock session in `localStorage`
+- `ProtectedRoute` redirects unauthenticated users to `/login`
+
+### ✅ Ratings & Order Flow (Listing Detail)
+- Tap-to-rate stars; order state machine (request → pending/confirmed) with pickup code
+- Favorite toggle and share (Web Share API + clipboard fallback)
+
+### ✅ KI-Assistent (`/llm`)
+- Text generation via a local Ollama instance proxied through `server.js`
+
 ### ❌ Not Yet Implemented
-- Backend / database (no persistence)
-- User authentication
+- Backend / database for listings (no real persistence; offers vanish on refresh)
+- **Real** authentication (current auth is a mock with no backend identity)
 - Real image upload
-- Reservation / claim system
-- Push notifications
-- Ratings and reviews
+- Reservation / claim system backed by a server
+- Real push notifications (reminder logic is a contract spec only)
 - CO₂ savings calculation
 - Company analytics dashboard
 
@@ -598,22 +632,29 @@ Tap "Erstellen" (+ tab)
 
 **Run:** `npm run test:run`
 
-**Current results: 10 test files, 80 tests, all passing**
+**Current results: 13 test files, 138 tests, all passing**
 
 | File | Tests | What it covers |
 |---|---|---|
 | `ac1-geolocation-hook.test.ts` | 7 | Hook state machine (idle, loading, success, denied, unavailable, no-API) |
 | `ac2-location-permission-ui.test.tsx` | 7 | Banner renders/hides, button click, loading state, disabled state |
-| `ac3-listing-coordinates.test.ts` | 20 | Listing type has lat/lng, all 6 listings within Berlin bounds, unique coords |
-| `ac4-distance-sort.test.tsx` | 3 | Sort order (id 1 closest, id 4 furthest, Home page renders in order) |
+| `ac3-listing-coordinates.test.ts` | 23 | Listing type has lat/lng, all 6 listings within Berlin bounds, unique coords |
+| `ac4-distance-sort.test.tsx` | 4 | Sort order (id 1 closest, id 4 furthest, Home page renders in order) |
 | `ac5-distance-display.test.tsx` | 4 | Computed vs. fallback distance, `data-testid`, 1-decimal format |
-| `ac6-ac7-map-view.test.tsx` | 7 | MapContainer renders, TileLayer, 6 markers, marker coordinates, click navigation |
+| `ac6-ac7-map-view.test.tsx` | 10 | MapContainer, TileLayer, 6 markers, click navigation, **"Angebot öffnen" records a view** |
 | `ac8-location-fallback.test.tsx` | 7 | Renders for denied/unavailable, hidden for success/idle, retry button |
 | `haversine-distance.test.ts` | 6 | Zero distance, ~111km/degree, symmetry, Berlin→Munich |
-| `student-category-filter.test.ts` | 9 | Existing filter logic for store/private type filter |
+| `recommendation-engine.test.ts` | 32 | Feature scores (category, distance, type, price, urgency), time decay, `scoreListings` |
+| `recommendation-model-training.test.ts` | 15 | TF.js model: training mutates weights, localStorage persistence, reset restores defaults |
+| `iso9241-form-validation.test.tsx` | 8 | AddListing field-level validation, aria-invalid, error clearing, accessible back button |
+| `student-category-filter.test.ts` | 9 | Filter logic for store/private type filter |
 | `student-reminder.test.ts` | 6 | Reminder service contract (specification test) |
 
 **Note on react-leaflet testing:** Leaflet cannot run in jsdom (it requires real DOM measurements). The `ac6-ac7` test file mocks both `leaflet` and `react-leaflet` entirely, replacing them with simple `<div>` elements that carry the expected `data-testid` attributes.
+
+**Note on TensorFlow.js testing:** TF.js falls back to its CPU backend in jsdom (WebGL is unavailable). The model training tests assert *robust* properties — that `fit()` measurably changes the model output and that `resetModel()` restores defaults — rather than a specific direction of weight movement, which is not reliable with so few training samples.
+
+**Note on Radix UI testing:** `src/__tests__/setup.ts` polyfills `ResizeObserver`, which Radix primitives (e.g. RadioGroup in AddListing) require but jsdom does not provide.
 
 ---
 
@@ -685,3 +726,55 @@ Replaced the static "Jetzt anrufen / Nachricht senden" button with a proper orde
 | Metzgerei Müller | call | auto |
 
 **Tests:** All 113 tests still passing after these changes. Build size unchanged.
+
+---
+
+## 15. ISO 9241 Conformance
+
+FoodShare is being aligned with **ISO 9241-110** (the seven interaction principles / *Grundsätze der Dialoggestaltung*) and **ISO 9241-171** (accessibility). This section records what has been implemented and where the gaps remain.
+
+### The seven principles (ISO 9241-110)
+
+| # | Principle (DE) | Status | Where it shows up |
+|---|---|---|---|
+| 1 | Aufgabenangemessenheit (suitability for the task) | ✅ | Distance/ML sort surfaces relevant offers first; ≤5-field offer form; one-tap order flow |
+| 2 | Selbstbeschreibungsfähigkeit (self-descriptiveness) | ✅ | Every control now gives feedback — no silent buttons; order state machine labels each step; recommendation tier shown on each card |
+| 3 | Erwartungskonformität (conformity with expectations) | ✅ | Consistent bottom nav, back buttons, German labels; active-tab highlighting |
+| 4 | Lernförderlichkeit (learnability) | ⚠️ | Icons + text labels throughout; no onboarding/tour yet |
+| 5 | Steuerbarkeit (controllability) | ✅ | Cancel on order flow and offer form; favorite toggle; "Empfehlungen zurücksetzen" undoes ML personalization |
+| 6 | Fehlertoleranz (error tolerance) | ✅ | AddListing validates every required field inline with `role="alert"`, guards numeric ranges, clears errors on correction, and moves focus to the first invalid field |
+| 7 | Benutzerbindung (user engagement) | ⚠️ | Ratings, impact metric, personalized recommendations; engagement loop not yet measured |
+
+### Accessibility (ISO 9241-171)
+
+- **Accessible names:** all icon-only buttons (notifications, share, favorite, back, filter, location) carry an `aria-label`.
+- **Form semantics:** inputs use `<Label htmlFor>`, expose `aria-invalid`, and link their error text via `aria-describedby`; error messages use `role="alert"` so screen readers announce them.
+- **State announcement:** the favorite button exposes `aria-pressed`; the rating stars carry per-star `aria-label`s.
+- **Open gaps:** no skip-to-content link, no full keyboard-trap audit, color-contrast not yet formally verified, no automated axe-core run.
+
+### What changed in the conformance pass (this session)
+
+- **AddListing (Fehlertoleranz):** moved from a single generic toast to per-field inline validation. All five required fields (title, description, location, expiry, contact) are validated; expiry must be > 0; price may not be negative; errors clear as the user types; focus jumps to the first invalid field.
+- **No silent dead-ends (Selbstbeschreibungsfähigkeit):** the notifications bell, share, favorite, profile menu items, and search filter button — previously no-ops — now give feedback (favorite toggles with a confirmation, share uses the Web Share API with a clipboard fallback, others show an informative toast).
+- **Accessible names (ISO 9241-171):** `aria-label`s added across all icon-only buttons.
+- **Tests:** new `iso9241-form-validation.test.tsx` (8 tests) covers the validation rules and the accessible back button; `setup.ts` gained a `ResizeObserver` polyfill so Radix-based pages can be component-tested.
+
+---
+
+## 16. Changelog — Session 4 (2026-05-28)
+
+### Pulled `origin/master` (PWA + LLM updates)
+Fast-forwarded onto the team's latest: installable PWA (`manifest.webmanifest`, `registerSW.ts`, `icon.svg`), and an expanded Ollama-backed KI-Assistent (`server.js` proxy, reworked `useLLM.ts` / `LLM.tsx`). No conflicts with local work.
+
+### TensorFlow.js recommendation engine — completed
+The hand-crafted weighted-sum scorer was already a TF.js `Dense(1)` model; this session wired it end-to-end:
+- **Online training** (`trainOnBehavior`): viewed listings are positive examples, unviewed are negative; `model.fit()` updates the weights and persists them to `localStorage`.
+- **Persistence** (`saveModel` / `loadSavedModel`): the trained model is restored on app load via `tf.loadLayersModel('localstorage://…')`.
+- **Reset** (`resetModel`): restores the default kernel and clears the stored model — wired to "Empfehlungen zurücksetzen" in Profile.
+- **Surfacing:** `ListingCard` shows the recommendation tier (🔥 / ⭐ / normal) on every tile; the map uses tiered marker icons; clicking "Angebot öffnen" on a map popup records a view.
+
+### ISO 9241 conformance pass
+See [section 15](#15-iso-9241-conformance). Error-tolerant offer form, feedback on every control, and accessible names for icon buttons.
+
+### Test suite
+130 → **138 tests, 13 files, all passing.** Production build clean.
