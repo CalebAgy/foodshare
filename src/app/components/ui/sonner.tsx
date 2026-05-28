@@ -21,6 +21,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--width": "calc(28rem - 2rem)",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          // Sonner dims the description by default — keep it readable.
+          description: "group-[.toast]:text-popover-foreground group-[.toast]:opacity-90",
+        },
+      }}
       {...props}
     />
   );
