@@ -73,8 +73,8 @@ export default function LLM() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="max-w-3xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground flex justify-center">
+      <main className="w-full max-w-md px-4 py-6">
         <div className="mb-6 flex items-center gap-3">
           <Link to="/" className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             <ArrowLeft className="size-4" /> Zurück
@@ -85,7 +85,7 @@ export default function LLM() {
           </div>
         </div>
 
-        <section className="rounded-2xl border border-input bg-surface p-4 shadow-sm">
+        <section className="rounded-2xl border border-input bg-card p-4 shadow-sm">
           <div className="space-y-3 max-h-[60vh] overflow-auto px-2 py-1">
             {messages.map((m, idx) => (
               <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>

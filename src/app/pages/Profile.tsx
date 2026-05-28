@@ -18,6 +18,9 @@ export default function Profile() {
   const handleResetRecommendations = () => {
     clearBehavior();
     resetModel();
+    toast.success('Empfehlungen zurückgesetzt', {
+      description: 'Dein Verlauf wurde gelöscht und die Empfehlungen starten neu.',
+    });
   };
 
   const menuItems = [

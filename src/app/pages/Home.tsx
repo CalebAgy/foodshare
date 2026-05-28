@@ -144,12 +144,18 @@ export default function Home() {
         )}
       </main>
 
-      <Link
-        to="/llm"
-        className="fixed bottom-[90px] right-4 z-50 inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-600/20 transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-      >
-        <Sparkles className="size-4" /> KI-Assistent
-      </Link>
+      {/* Anchor the floating button to the centered mobile frame, not the viewport edge */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center">
+        <div className="relative w-full max-w-md">
+          <Link
+            to="/llm"
+            aria-label="KI-Assistent öffnen"
+            className="pointer-events-auto absolute bottom-[90px] right-4 inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-600/20 transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <Sparkles className="size-4" /> KI-Assistent
+          </Link>
+        </div>
+      </div>
     </MobileLayout>
   );
 }
